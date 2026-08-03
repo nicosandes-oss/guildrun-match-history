@@ -354,9 +354,6 @@ function fmtDuration(s) {
   const m = Math.floor(s / 60);
   return `${m}m`;
 }
-    const m = Math.floor(s / 60);
-    return `${m}m`;
-  }
 
   function timeAgo(iso) {
     const d = Math.floor((Date.now() - new Date(iso.replace(" ", "T")).getTime()) / 86400000);
