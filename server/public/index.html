@@ -343,14 +343,17 @@
   };
 
   function itemDisplay(ref) {
-    if (!ref) return null;
-    if (ITEM_NAMES[ref]) return ITEM_NAMES[ref];
-    // Already a real name (uploaded after companion fix)
-    if (!ref.startsWith("seq:")) return ref;
-    // Unknown ID fallback
-    return ref.replace("seq:tem_", "Item #");
-  }
-    if (!s) return "—";
+  if (!ref) return null;
+  if (ITEM_NAMES[ref]) return ITEM_NAMES[ref];
+  if (!ref.startsWith("seq:")) return ref;
+  return ref.replace("seq:tem_", "Item #");
+}
+
+function fmtDuration(s) {
+  if (!s) return "—";
+  const m = Math.floor(s / 60);
+  return `${m}m`;
+}
     const m = Math.floor(s / 60);
     return `${m}m`;
   }
