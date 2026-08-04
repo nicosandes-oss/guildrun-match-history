@@ -1,16 +1,20 @@
 // server.js
 // GuildRun run history server.
 //
-// Uses sqlite3 (local file). Data resets on Render redeploy on the free tier,
-// which is fine for getting the site working — we can add persistence later.
+// Uses Turso (libsql) — data persists across Render restarts/redeploys,
+// since it lives outside the container.
 //
 // ENVIRONMENT VARIABLES:
-//   UPLOAD_SECRET  — shared secret between server and companion app (required)
-//   PORT           — defaults to 3000
+//   UPLOAD_SECRET       — shared secret between server and companion app (required)
+//   TURSO_DATABASE_URL  — libsql://... url from `turso db show <name> --url`
+//   TURSO_AUTH_TOKEN    — from `turso db tokens create <name>`
+//   PORT                — defaults to 3000
+
+require("dotenv").config();
 
 const express = require("express");
 const path    = require("path");
-const sqlite3 = require("sqlite3").verbose();
+const { createClient } = require("@libsql/client");
 
 const app    = express();
 const PORT   = process.env.PORT || 3000;
@@ -20,16 +24,21 @@ const SECRET = process.env.UPLOAD_SECRET || "dev_secret_change_me";
 // Database
 // ---------------------------------------------------------------------------
 
-const db = new sqlite3.Database(path.join(__dirname, "runs.db"), (err) => {
-  if (err) { console.error("DB open error:", err.message); process.exit(1); }
+const db = createClient({
+  url:       process.env.TURSO_DATABASE_URL,
+  authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
-const dbRun = (sql, p = []) => new Promise((res, rej) =>
-  db.run(sql, p, function(err) { err ? rej(err) : res(this); }));
-const dbGet = (sql, p = []) => new Promise((res, rej) =>
-  db.get(sql, p, (err, row) => err ? rej(err) : res(row)));
-const dbAll = (sql, p = []) => new Promise((res, rej) =>
-  db.all(sql, p, (err, rows) => err ? rej(err) : res(rows)));
+// small helpers to keep the rest of the file close to how it read before
+const dbRun = async (sql, args = []) => db.execute({ sql, args });
+const dbGet = async (sql, args = []) => {
+  const r = await db.execute({ sql, args });
+  return r.rows[0];
+};
+const dbAll = async (sql, args = []) => {
+  const r = await db.execute({ sql, args });
+  return r.rows;
+};
 
 async function setupDb() {
   await dbRun(`
@@ -84,8 +93,9 @@ app.post("/api/upload", async (req, res) => {
        JSON.stringify(r.heroes||[]), JSON.stringify(r.relics||[])]
     );
 
-    console.log(`[upload] ${steamName} ${r.outcome} at ${r.startedAt} → id ${result.lastID}`);
-    res.json({ status: "ok", id: result.lastID });
+    const insertedId = Number(result.lastInsertRowid);
+    console.log(`[upload] ${steamName} ${r.outcome} at ${r.startedAt} → id ${insertedId}`);
+    res.json({ status: "ok", id: insertedId });
   } catch (err) {
     console.error("[upload]", err.message);
     res.status(500).json({ error: "Failed to save run." });
