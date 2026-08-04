@@ -327,7 +327,8 @@
   });
   playerInput.addEventListener("blur", () => setTimeout(() => suggestList.classList.remove("open"), 100));
   playerInput.addEventListener("keydown", (e) => { if (e.key === "Enter") search(); });
-
+  searchBtn.addEventListener("click", () => search());
+  
   function renderSuggestions(names) {
     if (!names.length) { suggestList.classList.remove("open"); return; }
     suggestList.innerHTML = names.map(n => `<div class="suggest-item">${n}</div>`).join("");
